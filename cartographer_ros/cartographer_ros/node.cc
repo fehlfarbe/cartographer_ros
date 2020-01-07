@@ -785,9 +785,14 @@ void Node::HandleImuMessage(const int trajectory_id,
   auto sensor_bridge_ptr = map_builder_bridge_.sensor_bridge(trajectory_id);
   auto imu_data_ptr = sensor_bridge_ptr->ToImuData(msg);
   if (imu_data_ptr != nullptr) {
-    extrapolators_.at(trajectory_id).AddImuData(*imu_data_ptr);
+      if(previous_imu_time_ <= imu_data_ptr->time){
+          extrapolators_.at(trajectory_id).AddImuData(*imu_data_ptr);
+          sensor_bridge_ptr->HandleImuMessage(sensor_id, msg);
+          previous_imu_time_ = imu_data_ptr->time;
+      } else {
+          LOG(WARNING) << "IMU time " << imu_data_ptr->time << " too small (prev: " << previous_imu_time_ << ")";
+      }
   }
-  sensor_bridge_ptr->HandleImuMessage(sensor_id, msg);
 }
 
 void Node::HandleLaserScanMessage(const int trajectory_id,
@@ -819,8 +824,12 @@ void Node::HandlePointCloud2Message(
   if (!sensor_samplers_.at(trajectory_id).rangefinder_sampler.Pulse()) {
     return;
   }
-  map_builder_bridge_.sensor_bridge(trajectory_id)
-      ->HandlePointCloud2Message(sensor_id, msg);
+    if(previous_cloud_time_ <= msg->header.stamp) {
+        map_builder_bridge_.sensor_bridge(trajectory_id)->HandlePointCloud2Message(sensor_id, msg);
+        previous_cloud_time_ = msg->header.stamp;
+    } else {
+        LOG(WARNING) << "Cloud time " << msg->header.stamp << " too small (prev: " << previous_cloud_time_ << ")";
+    }
 }
 
 void Node::SerializeState(const std::string& filename,

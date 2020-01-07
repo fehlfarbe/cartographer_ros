@@ -146,10 +146,18 @@ void SensorBridge::HandleImuMessage(const std::string& sensor_id,
                                     const sensor_msgs::Imu::ConstPtr& msg) {
   std::unique_ptr<carto::sensor::ImuData> imu_data = ToImuData(msg);
   if (imu_data != nullptr) {
-    trajectory_builder_->AddSensorData(
-        sensor_id,
-        carto::sensor::ImuData{imu_data->time, imu_data->linear_acceleration,
-                               imu_data->angular_velocity});
+    if (imu_data->time <= previous_imu_time_) {
+      LOG(WARNING) << "Ignored IMU message from sensor "
+                   << sensor_id << " because previous IMU data time "
+                   << previous_imu_time_ << " is not before current IMU data time "
+                   << imu_data->time;
+    } else {
+        previous_imu_time_ = imu_data->time;
+        trajectory_builder_->AddSensorData(
+                sensor_id,
+                carto::sensor::ImuData{imu_data->time, imu_data->linear_acceleration,
+                                       imu_data->angular_velocity});
+    }
   }
 }
 
@@ -173,10 +181,19 @@ void SensorBridge::HandleMultiEchoLaserScanMessage(
 void SensorBridge::HandlePointCloud2Message(
     const std::string& sensor_id,
     const sensor_msgs::PointCloud2::ConstPtr& msg) {
-  carto::sensor::PointCloudWithIntensities point_cloud;
-  carto::common::Time time;
-  std::tie(point_cloud, time) = ToPointCloudWithIntensities(*msg);
-  HandleRangefinder(sensor_id, time, msg->header.frame_id, point_cloud.points);
+  if (msg->header.stamp <= previous_cloud_time_) {
+      LOG(WARNING) << "Ignored CLOUD message from sensor "
+                   << sensor_id << " because previous CLOUD data time "
+                   << previous_cloud_time_ << " is not before current CLOUD data time "
+                   << msg->header.stamp;
+      return;
+  } else {
+      previous_cloud_time_ = msg->header.stamp;
+      carto::sensor::PointCloudWithIntensities point_cloud;
+      carto::common::Time time;
+      std::tie(point_cloud, time) = ToPointCloudWithIntensities(*msg);
+      HandleRangefinder(sensor_id, time, msg->header.frame_id, point_cloud.points);
+  }
 }
 
 const TfBridge& SensorBridge::tf_bridge() const { return tf_bridge_; }

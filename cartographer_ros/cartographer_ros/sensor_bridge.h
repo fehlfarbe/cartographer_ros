@@ -85,6 +85,8 @@ class SensorBridge {
                          const ::cartographer::sensor::TimedPointCloud& ranges);
 
   const int num_subdivisions_per_laser_scan_;
+  cartographer::common::Time previous_imu_time_;
+  ros::Time previous_cloud_time_;
   std::map<std::string, cartographer::common::Time>
       sensor_to_previous_subdivision_time_;
   const TfBridge tf_bridge_;
