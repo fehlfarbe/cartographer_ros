@@ -229,8 +229,9 @@ class Node {
   ::ros::Timer publish_local_trajectory_data_timer_;
 
   // save last message timestamp to make sure that the timestamps are continuous
-  cartographer::common::Time previous_imu_time_;
-  ros::Time previous_cloud_time_;
+    cartographer::common::Time previous_imu_time_;
+    cartographer::common::Time previous_odom_time_;
+    ros::Time previous_cloud_time_;
 };
 
 }  // namespace cartographer_ros

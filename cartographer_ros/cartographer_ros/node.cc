@@ -748,9 +748,17 @@ void Node::HandleOdometryMessage(const int trajectory_id,
   auto sensor_bridge_ptr = map_builder_bridge_.sensor_bridge(trajectory_id);
   auto odometry_data_ptr = sensor_bridge_ptr->ToOdometryData(msg);
   if (odometry_data_ptr != nullptr) {
-    extrapolators_.at(trajectory_id).AddOdometryData(*odometry_data_ptr);
+      if(previous_odom_time_ < odometry_data_ptr->time) {
+          extrapolators_.at(trajectory_id).AddOdometryData(*odometry_data_ptr);
+          sensor_bridge_ptr->HandleOdometryMessage(sensor_id, msg);
+          LOG(WARNING) << "ODOM time " << odometry_data_ptr->time << " is GOOD (prev: " << previous_odom_time_ << ")";
+          previous_odom_time_ = odometry_data_ptr->time;
+      }
+      else
+      {
+          LOG(ERROR) << "ODOM time " << odometry_data_ptr->time << " ERROR (prev: " << previous_odom_time_ << ")";
+      }
   }
-  sensor_bridge_ptr->HandleOdometryMessage(sensor_id, msg);
 }
 
 void Node::HandleNavSatFixMessage(const int trajectory_id,
@@ -785,12 +793,13 @@ void Node::HandleImuMessage(const int trajectory_id,
   auto sensor_bridge_ptr = map_builder_bridge_.sensor_bridge(trajectory_id);
   auto imu_data_ptr = sensor_bridge_ptr->ToImuData(msg);
   if (imu_data_ptr != nullptr) {
-      if(previous_imu_time_ <= imu_data_ptr->time){
+      if(previous_imu_time_ < imu_data_ptr->time){
           extrapolators_.at(trajectory_id).AddImuData(*imu_data_ptr);
           sensor_bridge_ptr->HandleImuMessage(sensor_id, msg);
+          LOG(WARNING) << "IMU time " << imu_data_ptr->time << " is GOOD (prev: " << previous_imu_time_ << ")";
           previous_imu_time_ = imu_data_ptr->time;
       } else {
-          LOG(WARNING) << "IMU time " << imu_data_ptr->time << " too small (prev: " << previous_imu_time_ << ")";
+          LOG(ERROR) << "IMU time " << imu_data_ptr->time << " ERROR (prev: " << previous_imu_time_ << ")";
       }
   }
 }
